@@ -1,5 +1,6 @@
 import type { StorybookConfig } from 'storybook-react-rsbuild'
-import { join, dirname,resolve } from 'path'
+import { join, dirname, extname } from 'path'
+import { mergeRsbuildConfig } from '@rsbuild/core'
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -26,15 +27,32 @@ const config: StorybookConfig = {
     autodocs: 'tag',
   },
   rsbuildFinal: (config) => {
-
-    if(!config.source) {
-      config.source = {};
+    if (!config.source) {
+      config.source = {}
     }
 
-    config.source.exclude = [
-      resolve(__dirname, '/src/tools/**/*'),
-    ];
-    return config
+    return mergeRsbuildConfig(config, {
+      tools: {
+        rspack: (config, { addRules, appendPlugins, rspack, mergeConfig }) => {
+          return mergeConfig(config, {
+            plugins: [
+              new rspack.IgnorePlugin({
+                checkResource: (resource, context) => {
+                  // for example, ignore all markdown files
+                  const absPathHasExt = extname(resource)
+                  if (absPathHasExt === '.txt' || absPathHasExt === '.ps1') {
+                    return true
+                  }
+
+                  return false
+                },
+              }),
+            ],
+          })
+        },
+      },
+    });
+
   },
   typescript: {
     reactDocgen: 'react-docgen',
